@@ -129,9 +129,9 @@ class MQClient {
   getConnection() {
     let points = [];
 
-    if (process.env['HOST'] && process.env['PORT']) {
+    if (process.env['HOST'] && process.env['MQ_PORT']) {
       let h = process.env['HOST'];
-      let p = process.env['PORT'];
+      let p = process.env['MQ_PORT'];
       points.push(`h(${p})`)
     } else {
       env.MQ_ENDPOINTS.forEach((p) => {
