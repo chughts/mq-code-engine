@@ -1,5 +1,5 @@
 FROM node:12
-RUN apt remove curl && apt purge curl
+RUN apt-get remove -y curl && apt-get purge -y curl
 WORKDIR /app
 COPY /app/ /app/
 RUN npm install
