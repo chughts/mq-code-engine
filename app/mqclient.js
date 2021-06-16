@@ -209,7 +209,7 @@ class MQClient {
       debug_warn("Failed to connect to MQ");
       debug_info(err);
       //If there is only a partial connection / open then clean up.
-      this.cleanup();
+      this.performCleanUp();
     })
 
   }
