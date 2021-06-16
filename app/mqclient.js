@@ -20,7 +20,7 @@ let debug_warn = require('debug')('mqcodeengine-mqclient:warn');
 // endpoint in the arryay is used.
 var MQDetails = {};
 
-['QMGR', 'QUEUE_NAME', 'HOST', 'PORT', 'MQ_PORT'
+['QMGR', 'QUEUE_NAME', 'HOST', 'PORT', 'MQ_PORT',
  'CHANNEL', 'KEY_REPOSITORY', 'CIPHER'].forEach(function(f) {
   MQDetails[f] = process.env[f] || env.MQ_ENDPOINTS[0][f]
 });
