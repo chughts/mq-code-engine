@@ -1,5 +1,5 @@
 FROM node:12
-RUN apt-get autoremove curl
+RUN apt-get autoremove -y curl
 WORKDIR /app
 COPY /app/ /app/
 RUN npm install
