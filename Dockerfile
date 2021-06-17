@@ -5,7 +5,7 @@ RUN apt-get autoremove -y curl libcurl3 libcurl3-gnutls libcurl4-openssl-dev \
   libwebp-dev libwebp6 libwebpdemux2 libwebpmux2 \
   libx11-6 libx11-data \
   libxml2 libxml2-dev \
-  mysql-server mysql-client mysql-common mysql-server-core-* mysql-client-core-*
+  mysql
 WORKDIR /app
 COPY /app/ /app/
 RUN npm install
