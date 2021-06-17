@@ -20,9 +20,17 @@ router.get('/', function(req, res, next) {
 router.get('/mqput', function(req, res, next) {
   debug_info('Routing to /mqput')
   debug_info("Attempting MQ Put");
-  mqclient.put("Message app running in Cloud Engine");
-
-  res.send('Check logs for put');
+  mqclient.put("Message app running in Cloud Engine")
+  .then((statusMsg) => {
+    res.render('mqput', {
+      status: statusMsg
+    });
+  })
+  .catch((err) => {
+    res.render('mqput', {
+      status: err
+    });
+  });
 });
 
 module.exports = router;

@@ -163,55 +163,69 @@ class MQClient {
   }
 
   performCleanUp() {
-    let closePromise = Promise.resolve();
-    if (null !== this._hObj) {
-      debug_info("Will be attempting MQ Close");
-      closePromise = mq.ClosePromise(this._hObj, 0);
-    }
-    closePromise
-    .then(() => {
-      debug_info("Will be attempting MQ Disconnect");
-      this._hObj = null;
-      let disconnectPromise = Promise.resolve();
-      if (null !== this._hconn) {
-         disconnectPromise = mq.DiscPromise(this._hconn);
+    return new Promise((resolve, reject) => {
+      let closePromise = Promise.resolve();
+      if (null !== this._hObj) {
+        debug_info("Will be attempting MQ Close");
+        closePromise = mq.ClosePromise(this._hObj, 0);
       }
-      return disconnectPromise;
-    })
-    .then(() => {
-      this._hconn = null;
-      debug_info("Clean up was successfull");
-    })
-    .catch((err) => {
-      debug_warn("Error in MQ connection cleanup ", err);
-      this._hObj = null;
-      this._hconn = null;
-    })
+      closePromise
+      .then(() => {
+        debug_info("Will be attempting MQ Disconnect");
+        this._hObj = null;
+        let disconnectPromise = Promise.resolve();
+        if (null !== this._hconn) {
+           disconnectPromise = mq.DiscPromise(this._hconn);
+        }
+        return disconnectPromise;
+      })
+      .then(() => {
+        this._hconn = null;
+        debug_info("Clean up was successfull");
+        resolve();
+      })
+      .catch((err) => {
+        debug_warn("Error in MQ connection cleanup ", err);
+        this._hObj = null;
+        this._hconn = null;
+        // For now no, need to signal failure
+        reject(err);
+      })
+    });
   }
 
   put(message) {
-    debug_info("Will be putting message ", message);
+    return new Promise((resolve, reject) => {
+      debug_info("Will be putting message ", message);
 
-    // Check if connection has already been established.
-    let connectionPromise = Promise.resolve();
-    if (this._hconn === null || this === null) {
-      connectionPromise = this.performConnection();
-    }
-    connectionPromise
-    .then(() => {
-      debug_info("Connected to MQ");
-      return this.performPut(message);
-    })
-    .then(() => {
-      debug_info("Message Posted");
-    })
-    .catch((err) => {
-      debug_warn("Failed to connect to MQ");
-      debug_info(err);
-      //If there is only a partial connection / open then clean up.
-      this.performCleanUp();
-    })
-
+      // Check if connection has already been established.
+      let connectionPromise = Promise.resolve();
+      if (this._hconn === null || this === null) {
+        connectionPromise = this.performConnection();
+      }
+      connectionPromise
+      .then(() => {
+        debug_info("Connected to MQ");
+        return this.performPut(message);
+      })
+      .then(() => {
+        debug_info("Message Posted");
+        resolve('Message was posted successfully');
+      })
+      .catch((err) => {
+        debug_warn("Failed to connect to MQ");
+        debug_info(err);
+        //If there is only a partial connection / open then clean up.
+        //and signal tht there was a problem
+        this.performCleanUp()
+        .then(() => {
+          reject(err)
+        })
+        .catch((cleanupErr) => {
+          reject(err);
+        })
+      })
+    });
   }
 
 }
