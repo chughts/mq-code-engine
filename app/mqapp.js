@@ -6,8 +6,8 @@ const app = express();
 
 const approutes = require('./routes/approutes');
 
-const MQClient = require('./mqclient');
-let mqclient = new MQClient();
+// const MQClient = require('./mqclient');
+// let mqclient = new MQClient();
 
 let debug_info = require('debug')('mqcodeengine-mqapp:info');
 let debug_warn = require('debug')('mqcodeengine-mqapp:warn');
@@ -26,12 +26,12 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use('/', approutes);
 
-app.get('/mqput', function (req, res) {
-  debug_info("Attempting MQ Put");
-  mqclient.put("Message app running in Cloud Engine");
-
-  res.send('This is where the put will have happened - not yet functioning');
-})
+// app.get('/mqput', function (req, res) {
+//   debug_info("Attempting MQ Put");
+//   mqclient.put("Message app running in Cloud Engine");
+//
+//   res.send('Check logs for put');
+// })
 
 
 module.exports = app;
