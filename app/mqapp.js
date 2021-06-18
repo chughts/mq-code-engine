@@ -1,8 +1,11 @@
 const express = require('express');
 const pug = require('pug');
 const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
 
 const app = express();
+app.use(logger('dev'));
 
 const approutes = require('./routes/approutes');
 
@@ -18,7 +21,7 @@ app.set('view engine', 'pug');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
+app.use(cookieParser());
 
 // app.get('/', function (req, res) {
 //   res.send('Hello from MQ App v 001');
