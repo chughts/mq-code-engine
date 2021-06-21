@@ -144,22 +144,31 @@ class MQClient {
     return points.join(',');
   }
 
-  performPut(message) {
-    let msgObject = {
-      'Message' : message,
-      'Sent': '' + new Date()
+  performPut(message, quantity) {
+    var promises = [];
+
+    for (let i = 0; i < quantity; i++) {
+      let iteration = i + 1;
+      let msgObject = {
+        'Message' : message,
+        'Count' : '' + iteration + ' of ' + quantity,
+        'Sent': '' + new Date()
+      }
+      let msg = JSON.stringify(msgObject);
+
+      var mqmd = new mq.MQMD(); // Defaults are fine.
+      var pmo = new mq.MQPMO();
+
+      // Describe how the Put should behave
+      pmo.Options = MQC.MQPMO_NO_SYNCPOINT |
+        MQC.MQPMO_NEW_MSG_ID |
+        MQC.MQPMO_NEW_CORREL_ID;
+
+      promises.push( mq.PutPromise(this._hObj, mqmd, pmo, msg) );
     }
-    let msg = JSON.stringify(msgObject);
+    return Promise.all(promises);
 
-    var mqmd = new mq.MQMD(); // Defaults are fine.
-    var pmo = new mq.MQPMO();
-
-    // Describe how the Put should behave
-    pmo.Options = MQC.MQPMO_NO_SYNCPOINT |
-      MQC.MQPMO_NEW_MSG_ID |
-      MQC.MQPMO_NEW_CORREL_ID;
-
-    return mq.PutPromise(this._hObj, mqmd, pmo, msg);
+    //return mq.PutPromise(this._hObj, mqmd, pmo, msg);
   }
 
   performCleanUp() {
@@ -194,8 +203,19 @@ class MQClient {
     });
   }
 
-  put(message) {
+  put(putRequest) {
     return new Promise((resolve, reject) => {
+      let message = 'Message from app running in Cloud Engine';
+      let quantity = 1;
+      if (putRequest) {
+        if (putRequest.message) {
+          message = putRequest.message;
+        }
+        if (putRequest.quantity) {
+          quantity = putRequest.quantity;
+        }
+      }
+
       debug_info("Will be putting message ", message);
 
       // Check if connection has already been established.
@@ -206,7 +226,7 @@ class MQClient {
       connectionPromise
       .then(() => {
         debug_info("Connected to MQ");
-        return this.performPut(message);
+        return this.performPut(message, quantity);
       })
       .then(() => {
         debug_info("Message Posted");

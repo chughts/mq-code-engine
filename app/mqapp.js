@@ -1,3 +1,4 @@
+var createError = require('http-errors');
 const express = require('express');
 const pug = require('pug');
 const path = require('path');
@@ -22,20 +23,22 @@ app.set('view engine', 'pug');
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// app.get('/', function (req, res) {
-//   res.send('Hello from MQ App v 001');
-// })
 
 app.use('/', approutes);
 
+//404s
+// app.use(function(req, res, next) {
+//   var err = {status : 404}
+//   next(err);
+// });
 
-// app.get('/mqput', function (req, res) {
-//   debug_info("Attempting MQ Put");
-//   mqclient.put("Message app running in Cloud Engine");
-//
-//   res.send('Check logs for put');
-// })
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  debug_warn('Returning a 404');
+  next(createError(404));
+});
 
 
 module.exports = app;

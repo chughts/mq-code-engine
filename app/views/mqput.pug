@@ -1,8 +1,16 @@
-doctype html
-html(lang="en")
-  head
-    meta(name='viewport' content='width=device-width, initial-scale=1.0')
-    title MQ put on CodeEngine
+extends layout
+
+block content
   body
     h1 MQ Put App : CodeEngine
-    p   Put status : #{status}
+    p   Put status : &nbsp;
+      span#status
+    p   #{status}
+    form
+      div
+        span.label Message:
+        input#message(type='text' name='message')
+        span.label Quantity:
+        input#quantity(type='number' name='quantity')
+      div
+        button#mqputbutton(type='submit') Send
