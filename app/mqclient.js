@@ -10,6 +10,8 @@ var MQC = mq.MQC;
 let debug_info = require('debug')('mqcodeengine-mqclient:info');
 let debug_warn = require('debug')('mqcodeengine-mqclient:warn');
 
+const _HCONNKEY = Symbol('hconn');
+const _HOBJKEY = Symbol('hObj');
 
 // Load the MQ Endpoint details either from the envrionment or from the
 // env.json file. The envrionment takes precedence.
@@ -38,8 +40,8 @@ var credentials = {
 class MQClient {
 
   constructor() {
-    this._hconn = null;
-    this._hObj = null;
+    this[_HCONNKEY] = null;
+    this[_HOBJKEY] = null;
   }
 
   check() {
@@ -100,12 +102,12 @@ class MQClient {
       })
       .then((hconn) => {
         debug_info("Connected to MQ");
-        this._hconn = hconn;
+        this[_HCONNKEY] = hconn;
         return this.performOpen();
       })
       .then((hObj) => {
         debug_info("MQ Queue is open");
-        this._hObj = hObj;
+        this[_HOBJKEY] = hObj;
         resolve();
       })
       .catch((err) => {
@@ -123,7 +125,7 @@ class MQClient {
     od.ObjectType = MQC.MQOT_Q;
     let openOptions = MQC.MQOO_OUTPUT;
 
-    return mq.OpenPromise(this._hconn, od, openOptions);
+    return mq.OpenPromise(this[_HCONNKEY], od, openOptions);
   }
 
   getConnection() {
@@ -164,39 +166,39 @@ class MQClient {
         MQC.MQPMO_NEW_MSG_ID |
         MQC.MQPMO_NEW_CORREL_ID;
 
-      promises.push( mq.PutPromise(this._hObj, mqmd, pmo, msg) );
+      promises.push( mq.PutPromise(this[_HOBJKEY], mqmd, pmo, msg) );
     }
     return Promise.all(promises);
 
-    //return mq.PutPromise(this._hObj, mqmd, pmo, msg);
+    //return mq.PutPromise(this[_HOBJKEY], mqmd, pmo, msg);
   }
 
   performCleanUp() {
     return new Promise((resolve, reject) => {
       let closePromise = Promise.resolve();
-      if (null !== this._hObj) {
+      if (null !== this[_HOBJKEY]) {
         debug_info("Will be attempting MQ Close");
-        closePromise = mq.ClosePromise(this._hObj, 0);
+        closePromise = mq.ClosePromise(this[_HOBJKEY], 0);
       }
       closePromise
       .then(() => {
         debug_info("Will be attempting MQ Disconnect");
-        this._hObj = null;
+        this[_HOBJKEY] = null;
         let disconnectPromise = Promise.resolve();
-        if (null !== this._hconn) {
-           disconnectPromise = mq.DiscPromise(this._hconn);
+        if (null !== this[_HCONNKEY]) {
+           disconnectPromise = mq.DiscPromise(this[_HCONNKEY]);
         }
         return disconnectPromise;
       })
       .then(() => {
-        this._hconn = null;
+        this[_HCONNKEY] = null;
         debug_info("Clean up was successfull");
         resolve();
       })
       .catch((err) => {
         debug_warn("Error in MQ connection cleanup ", err);
-        this._hObj = null;
-        this._hconn = null;
+        this[_HOBJKEY] = null;
+        this[_HCONNKEY] = null;
         // For now no, need to signal failure
         reject(err);
       })
@@ -220,7 +222,7 @@ class MQClient {
 
       // Check if connection has already been established.
       let connectionPromise = Promise.resolve();
-      if (this._hconn === null || this === null) {
+      if (this[_HCONNKEY] === null || this === null) {
         connectionPromise = this.performConnection();
       }
       connectionPromise
