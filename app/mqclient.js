@@ -1,5 +1,8 @@
 // Import the MQ package
 const mq = require('ibmmq');
+const StringDecoder = require('string_decoder').StringDecoder;
+const decoder = new StringDecoder('utf8');
+
 
 // Load up missing envrionment variables from the env.json file
 const env = require('./env.json');
@@ -123,7 +126,8 @@ class MQClient {
     let od = new mq.MQOD();
     od.ObjectName = MQDetails.QUEUE_NAME;
     od.ObjectType = MQC.MQOT_Q;
-    let openOptions = MQC.MQOO_OUTPUT;
+
+    let openOptions = MQC.MQOO_OUTPUT | MQC.MQOO_INPUT_AS_Q_DEF
 
     return mq.OpenPromise(this[_HCONNKEY], od, openOptions);
   }
@@ -173,6 +177,105 @@ class MQClient {
     //return mq.PutPromise(this[_HOBJKEY], mqmd, pmo, msg);
   }
 
+  getSingleMessage() {
+    return new Promise((resolve, reject) => {
+      let buf = Buffer.alloc(1024);
+
+      let mqmd = new mq.MQMD();
+      let gmo = new mq.MQGMO();
+
+      gmo.Options = MQC.MQGMO_NO_SYNCPOINT |
+        MQC.MQGMO_NO_WAIT |
+        MQC.MQGMO_CONVERT |
+        MQC.MQGMO_FAIL_IF_QUIESCING;
+
+      mq.GetSync(this[_HOBJKEY], mqmd, gmo, buf, (err, len) => {
+        if (err) {
+          if (err.mqrc == MQC.MQRC_NO_MSG_AVAILABLE) {
+            debug_info("no more messages");
+          } else {
+            debug_warn('Error retrieving message', err);
+          }
+          debug_info('Resolving null from getSingleMessage');
+          resolve(null);
+        } else if (mqmd.Format == "MQSTR") {
+          // The Message from a Synchronouse GET is
+          // a data buffer, which needs to be encoded
+          // into a string, before the underlying
+          // JSON object is extracted.
+          debug_info("String data detected");
+
+          let buffString = decoder.write(buf.slice(0,len))
+
+          let msgObject = null;
+          try {
+            msgObject = JSON.parse(buffString);
+            resolve(msgObject);
+          } catch (err) {
+            debug_info("Error parsing json ", err);
+            debug_info("message <%s>", buffString);
+            resolve({'string_data' : buffString});
+          }
+        } else {
+          debug_info("binary message: " + buf);
+          resolve({'binary_data' : buf});
+        }
+
+      });
+
+    });
+  }
+
+  getSomeMessages(obtainedMessages, limit) {
+    return new Promise((resolve, reject) => {
+      debug_info("In loop looking for messages");
+
+      this.getSingleMessage()
+      .then((messageData) => {
+        debug_info('Message obtained');
+        if (messageData) {
+          debug_info('Message is not empty')
+          obtainedMessages.push(messageData);
+          debug_info('Interim Number of messages obtained : ', obtainedMessages.length);
+          if (obtainedMessages.length < limit) {
+            this.getSomeMessages(obtainedMessages, limit)
+            .then((result) => {
+              resolve(result);
+            })
+            .catch((err) => {
+              reject(err);
+            })
+          }
+        }
+        if (!messageData || obtainedMessages.length >= limit) {
+          debug_info('Resolving as enough messages found');
+          debug_info('Final Number of messages obtained : ', obtainedMessages.length);
+          resolve(obtainedMessages);
+        }
+      })
+      .catch((err) => {
+        debug_info("Error detected in loop ", err);
+        return reject(err);
+      });
+    });
+  }
+
+
+  performGet() {
+    return new Promise((resolve, reject) => {
+      let obtainedMessages = [];
+      const messageLimit = 10;
+      this.getSomeMessages(obtainedMessages, messageLimit)
+      .then((allFoundMessages) => {
+        debug_info("replying from performGet");
+        resolve(allFoundMessages);
+      })
+      .catch((err) => {
+        reject(err);
+      })
+    });
+  }
+
   performCleanUp() {
     return new Promise((resolve, reject) => {
       let closePromise = Promise.resolve();
@@ -205,6 +308,16 @@ class MQClient {
     });
   }
 
+  makeConnectionPromise() {
+    // Check if connection has already been established.
+    let connectionPromise = Promise.resolve();
+    if (this[_HCONNKEY] === null || this === null) {
+      connectionPromise = this.performConnection();
+    }
+    return connectionPromise;
+  }
+
+
   put(putRequest) {
     return new Promise((resolve, reject) => {
       let message = 'Message from app running in Cloud Engine';
@@ -220,12 +333,7 @@ class MQClient {
 
       debug_info("Will be putting message ", message);
 
-      // Check if connection has already been established.
-      let connectionPromise = Promise.resolve();
-      if (this[_HCONNKEY] === null || this === null) {
-        connectionPromise = this.performConnection();
-      }
-      connectionPromise
+      this.makeConnectionPromise()
       .then(() => {
         debug_info("Connected to MQ");
         return this.performPut(message, quantity);
@@ -248,6 +356,36 @@ class MQClient {
         })
       })
     });
+  }
+
+  get() {
+    return new Promise((resolve, reject) => {
+      debug_info("Will be getting messages ");
+      this.makeConnectionPromise()
+      .then(() => {
+        debug_info("Connected to MQ");
+        return this.performGet();
+      })
+      .then((messages) => {
+        debug_info("Messages Obtained");
+        resolve(messages);
+      })
+      .catch((err) => {
+        debug_warn("Failed to connect to MQ");
+        debug_info(err);
+        //If there is only a partial connection / open then clean up.
+        //and signal tht there was a problem
+        this.performCleanUp()
+        .then(() => {
+          reject(err)
+        })
+        .catch((cleanupErr) => {
+          reject(err);
+        })
+      })
+    });
+
+
   }
 
 }

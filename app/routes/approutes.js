@@ -20,12 +20,12 @@ router.get('/', function(req, res, next) {
 });
 
 router.get('/mqput', function(req, res, next) {
-  debug_info('Routing to /mqput')
+  debug_info('Routing to /mqput');
   res.render('mqput', {status: ''});
 });
 
 router.post('/api/mqput', function(req, res, next) {
-  debug_info('Routing to /api/mqput')
+  debug_info('Routing to /api/mqput');
 
   let data = req.body;
   debug_info('MQ Put Request submitted for ', data);
@@ -60,6 +60,20 @@ router.post('/api/mqput', function(req, res, next) {
     });
   });
 
+});
+
+
+router.get('/api/mqget', function(req, res, next) {
+  debug_info('Routing to /api/mqget');
+  mqclient.get()
+  .then((data) => {
+    res.json(data);
+  })
+  .catch((err) => {
+    res.status(500).send({
+      error: err
+    });
+  });
 });
 
 
