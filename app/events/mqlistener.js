@@ -1,4 +1,5 @@
-const http = require('http');
+const axios = require('axios');
+//const http = require('http');
 const url = require('url');
 const util = require('util');
 const MQEvents = require('./mqevents');
@@ -14,41 +15,53 @@ let regendpoint = 'http://localhost:8080/api/mqgetbyid?msgid=';
 pulser.on('mqevent', (msgData) => {
     debug_info(`${new Date().toISOString()} mqevent received`);
     debug_info('Message Data', msgData);
-    tellRegisteredEndpoints(msgData);
+    tellRegisteredEndpoints(msgData)
+    .then((data) => {
+      debug_info('Invocation was successfull ', data);
+    })
+    .catch((err) => {
+      debug_warn('Invocation failed ', err);
+    });
 });
 
+
 function tellRegisteredEndpoints(msgData) {
-  debug_info('Will be informing registered endpoints');
-  const parsedUrl = url.parse(regendpoint, true);
-  const options = {
-    host: parsedUrl.hostname,
-    port: parsedUrl.port,
-    path: parsedUrl.pathname,
-    method: 'GET'
-  };
-  if (parsedUrl.search) {
-    options.path += `${parsedUrl.search}`;
-  }
-  if (msgData && msgData['HexStrings'] && msgData['HexStrings'].MsgId) {
-    options.path += msgData['HexStrings'].MsgId;
-  }
+  return new Promise((resolve, reject) => {
+    debug_info('Will be informing registered endpoints');
 
-  debug_info('http request options will be ', options);
+    let uri = regendpoint;
 
-  const req = http.request(options);
-  // Invoked when the request is finished
-  req.on('response', res => {
-    debug_info(`STATUS: ${res.statusCode}`);
-    debug_info(`HEADERS: ${util.inspect(res.headers)}`);
-    res.setEncoding('utf8');
-    res.on('data', chunk => { debug_info(`BODY: ${chunk}`); });
-    res.on('error', err => { debug_info(`RESPONSE ERROR: ${err}`); });
+    if (!msgData || !msgData['HexStrings'] || !msgData['HexStrings'].MsgId) {
+      debug_warn('No MsgId found');
+      reject('No MsgId provided');
+    } else {
+      uri += msgData['HexStrings'].MsgId;
+      debug_info('Sending request to ', uri);
+
+      axios({
+        method: 'GET',
+        url: uri
+      })
+      .then(function(response) {
+        debug_info('Status code is ',  response.status);
+        switch (response.status) {
+          case 200:
+          case 201:
+            resolve(response.data);
+            break;
+          default:
+            reject('Error Invoking API ', response.statusCode);
+            break;
+          }
+        }).catch(function(err) {
+          reject("REST call error : ", err);
+        });
+    }
   });
-  // Invoked on errors
-  req.on('error', err => { debug_warn(`REQUEST ERROR: ${err}`); });
-  req.end();
-
 }
+
+
+
 
 // Start it pulsing
 pulser.start();

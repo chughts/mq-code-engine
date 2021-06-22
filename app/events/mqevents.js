@@ -5,7 +5,7 @@ let mqclient = new MQClient();
 let debug_info = require('debug')('mqcodeengine-mqevents:info');
 let debug_warn = require('debug')('mqcodeengine-mqevents:warn');
 
-const INTERVAL = 5000;
+const INTERVAL = 8000;
 
 class MQEvents extends EventEmitter {
     start() {
@@ -14,7 +14,9 @@ class MQEvents extends EventEmitter {
             .then((msgData) => {
               debug_info('Found Message ', msgData);
               debug_info(`${new Date().toISOString()} >>>> pulse`);
-              this.emit('mqevent', msgData);
+              if (msgData) {
+                this.emit('mqevent', msgData);
+              }
               debug_info(`${new Date().toISOString()} <<<< pulse`);
             })
             .catch((err) => {
