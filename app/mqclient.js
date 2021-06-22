@@ -315,7 +315,7 @@ class MQClient {
           let msgData = {
             'Buffer Array' : {
               'MsgId' : mqmd.MsgId,
-              'CorrelId' : mqmd.CorrelId           
+              'CorrelId' : mqmd.CorrelId
             },
             'HexStrings' : {
               'MsgId' : this.toHexString(mqmd.MsgId),
@@ -327,6 +327,12 @@ class MQClient {
           resolve(msgData);
         }
       });
+    });
+  }
+
+  performGetById(msgid) {
+    return new Promise((resolve, reject) => {
+      reject('Not yet implemented');
     });
   }
 
@@ -452,6 +458,25 @@ class MQClient {
         resolve(msgData);
       })
       .catch((err) => {
+        reject(err);
+      })
+    });
+  }
+
+
+  getById(msgid) {
+    return new Promise((resolve, reject) => {
+      this.makeConnectionPromise()
+      .then(() => {
+        debug_info("Connected to MQ");
+        return this.performGetById(msgid);
+      })
+      .then((msg) => {
+        debug_info('Message Found ', msg);
+        resolve(msg);
+      })
+      .catch((err) => {
+        debug_info('Error obtaining message by id ', err);
         reject(err);
       })
     });
