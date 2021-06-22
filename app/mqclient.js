@@ -16,6 +16,8 @@ let debug_warn = require('debug')('mqcodeengine-mqclient:warn');
 const _HCONNKEY = Symbol('hconn');
 const _HOBJKEY = Symbol('hObj');
 
+const BROWSEWAITINTERVAL = 10 * 1000; // 10 seconds
+
 // Load the MQ Endpoint details either from the envrionment or from the
 // env.json file. The envrionment takes precedence.
 // The json file allows for
@@ -127,7 +129,7 @@ class MQClient {
     od.ObjectName = MQDetails.QUEUE_NAME;
     od.ObjectType = MQC.MQOT_Q;
 
-    let openOptions = MQC.MQOO_OUTPUT | MQC.MQOO_INPUT_AS_Q_DEF
+    let openOptions = MQC.MQOO_OUTPUT | MQC.MQOO_INPUT_AS_Q_DEF | MQC.MQOO_BROWSE;
 
     return mq.OpenPromise(this[_HCONNKEY], od, openOptions);
   }
@@ -275,6 +277,59 @@ class MQClient {
     });
   }
 
+  toHexString(byteArray) {
+    return byteArray.reduce((output, elem) =>
+      (output + ('0' + elem.toString(16)).slice(-2)),
+      '');
+  }
+
+  performBrowse() {
+    return new Promise((resolve, reject) => {
+      let buf = Buffer.alloc(1024);
+
+      let mqmd = new mq.MQMD();
+      let gmo = new mq.MQGMO();
+
+      gmo.Options = MQC.MQGMO_NO_SYNCPOINT |
+        MQC.MQGMO_NO_WAIT |
+        MQC.MQGMO_CONVERT |
+        MQC.MQGMO_FAIL_IF_QUIESCING;
+
+        gmo.Options |= MQC.MQGMO_BROWSE_FIRST;
+
+        gmo.MatchOptions = MQC.MQMO_NONE;
+        gmo.WaitInterval = BROWSEWAITINTERVAL;
+
+      mq.GetSync(this[_HOBJKEY], mqmd, gmo, buf, (err, len) => {
+        if (err) {
+          if (err.mqrc == MQC.MQRC_NO_MSG_AVAILABLE) {
+            debug_info("no more messages");
+          } else {
+            debug_warn('Error retrieving message', err);
+          }
+          debug_info('Resolving null from getSingleMessage');
+          resolve(null);
+        } else {
+          debug_info("Message Found");
+
+          let msgData = {
+            'Buffer Array' : {
+              'MsgId' : mqmd.MsgId,
+              'CorrelId' : mqmd.CorrelId           
+            },
+            'HexStrings' : {
+              'MsgId' : this.toHexString(mqmd.MsgId),
+              'CorrelId' : this.toHexString(mqmd.CorrelId)
+            }
+          }
+
+          debug_info('Message Header retrieved: ', msgData);
+          resolve(msgData);
+        }
+      });
+    });
+  }
+
   performCleanUp() {
     return new Promise((resolve, reject) => {
       let closePromise = Promise.resolve();
@@ -383,8 +438,23 @@ class MQClient {
         })
       })
     });
+  }
 
 
+  browse() {
+    return new Promise((resolve, reject) => {
+      this.makeConnectionPromise()
+      .then(() => {
+        debug_info("Connected to MQ");
+        return this.performBrowse();
+      })
+      .then((msgData) => {
+        resolve(msgData);
+      })
+      .catch((err) => {
+        reject(err);
+      })
+    });
   }
 
 }
