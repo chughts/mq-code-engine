@@ -8,6 +8,7 @@ let debug_info = require('debug')('mqcodeengine-approutes:info');
 let debug_warn = require('debug')('mqcodeengine-approutes:warn');
 
 const APPTITLE = 'MQ apps on CodeEngine';
+const DEFAULT_LIMIT = 10;
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -65,7 +66,16 @@ router.post('/api/mqput', function(req, res, next) {
 
 router.get('/api/mqget', function(req, res, next) {
   debug_info('Routing to /api/mqget');
-  mqclient.get()
+
+  let querydata = req.query;
+  debug_info('MQ Get Request submitted for ', querydata);
+
+  let getLimit = DEFAULT_LIMIT;
+  if (querydata && querydata.limit && !isNaN(querydata.limit)) {
+    getLimit = querydata.limit;
+  }
+
+  mqclient.get(getLimit)
   .then((data) => {
     res.json(data);
   })

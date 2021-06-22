@@ -261,10 +261,9 @@ class MQClient {
   }
 
 
-  performGet() {
+  performGet(messageLimit) {
     return new Promise((resolve, reject) => {
       let obtainedMessages = [];
-      const messageLimit = 10;
       this.getSomeMessages(obtainedMessages, messageLimit)
       .then((allFoundMessages) => {
         debug_info("replying from performGet");
@@ -358,13 +357,13 @@ class MQClient {
     });
   }
 
-  get() {
+  get(getLimit) {
     return new Promise((resolve, reject) => {
       debug_info("Will be getting messages ");
       this.makeConnectionPromise()
       .then(() => {
         debug_info("Connected to MQ");
-        return this.performGet();
+        return this.performGet(getLimit);
       })
       .then((messages) => {
         debug_info("Messages Obtained");
