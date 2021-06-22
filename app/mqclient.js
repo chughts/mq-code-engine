@@ -283,6 +283,12 @@ class MQClient {
       '');
   }
 
+  hexToBytes(hex) {
+    for (var bytes = [], c = 0; c < hex.length; c += 2)
+      bytes.push(parseInt(hex.substr(c, 2), 16));
+    return bytes;
+  }
+
   performBrowse() {
     return new Promise((resolve, reject) => {
       let buf = Buffer.alloc(1024);
@@ -332,7 +338,53 @@ class MQClient {
 
   performGetById(msgid) {
     return new Promise((resolve, reject) => {
-      reject('Not yet implemented');
+      let buf = Buffer.alloc(1024);
+
+      let mqmd = new mq.MQMD();
+      let gmo = new mq.MQGMO();
+
+      gmo.Options = MQC.MQGMO_NO_SYNCPOINT |
+        MQC.MQGMO_NO_WAIT |
+        MQC.MQGMO_CONVERT |
+        MQC.MQGMO_FAIL_IF_QUIESCING;
+
+      gmo.MatchOptions = MQC.MQMO_MATCH_MSG_ID;
+      mqmd.MsgId = this.hexToBytes(msgid);        
+
+      mq.GetSync(this[_HOBJKEY], mqmd, gmo, buf, (err, len) => {
+        if (err) {
+          if (err.mqrc == MQC.MQRC_NO_MSG_AVAILABLE) {
+            debug_info("no more messages");
+          } else {
+            debug_warn('Error retrieving message', err);
+          }
+          debug_info('Resolving null from getSingleMessage');
+          resolve(null);
+        } else if (mqmd.Format == "MQSTR") {
+          // The Message from a Synchronouse GET is
+          // a data buffer, which needs to be encoded
+          // into a string, before the underlying
+          // JSON object is extracted.
+          debug_info("String data detected");
+
+          let buffString = decoder.write(buf.slice(0,len))
+
+          let msgObject = null;
+          try {
+            msgObject = JSON.parse(buffString);
+            resolve(msgObject);
+          } catch (err) {
+            debug_info("Error parsing json ", err);
+            debug_info("message <%s>", buffString);
+            resolve({'string_data' : buffString});
+          }
+        } else {
+          debug_info("binary message: " + buf);
+          resolve({'binary_data' : buf});
+        }
+
+      });
+
     });
   }
 
