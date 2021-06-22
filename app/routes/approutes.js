@@ -86,5 +86,16 @@ router.get('/api/mqget', function(req, res, next) {
   });
 });
 
+router.get('/api/mqgetbyid', function(req, res, next) {
+  debug_info('Routing to /api/mqgetbyid');
+
+  let querydata = req.query;
+  debug_info('MQ Get by id request submitted for ', querydata);
+
+  res.json({
+    status: 'Request was received'
+  });
+});
+
 
 module.exports = router;
