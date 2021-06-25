@@ -112,8 +112,26 @@ router.get('/api/mqgetbyid', function(req, res, next) {
     });
   }
 
-
 });
+
+
+function catchDeathSignal() {
+  debug_info('Application is about to die, processing tidy-up');
+  mqclient.performCleanUp()
+  .then(() => {
+    debug_info('Cleanup completed sucessfully');
+    process.exit(0);
+  })
+  .catch((err) => {
+    debug_warn('Cleanup failed! ', err);
+    process.exit(0);
+  })
+
+}
+
+process.on('SIGTERM', catchDeathSignal);
+process.on('SIGINT', catchDeathSignal);
+process.on('SIGHUP', catchDeathSignal);
 
 
 module.exports = router;
