@@ -2,15 +2,20 @@ extends layout
 
 block content
   body
-    h1 MQ Put App : CodeEngine
-    p   Put status : &nbsp;
+    p  &nbsp; Put status : &nbsp;
       span#status
     p   #{status}
     form
-      div
-        span.label Message:
-        input#message(type='text' name='message')
-        span.label Quantity:
-        input#quantity(type='number' name='quantity')
-      div
-        button#mqputbutton(type='submit') Send
+      div(class='container')
+        form
+          div(class="form-group row align-items-center")
+            label(for="message" class="col-2 col-form-label") Message:
+            div(class="col")
+              input#message(type='text' class="form-control" name='message')
+          div(class="form-group row align-items-center")
+            label(for="notekey" class="col-2 col-form-label") Quantity:
+            div(class="col")
+              input#quantity(type='number' class="form-control" name='quantity')
+          div(class="form-group row align-items-center")
+            div(class='col-2')
+              button#mqputbutton(class='btn btn-success float-right' type='submit') Send

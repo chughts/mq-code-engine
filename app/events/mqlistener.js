@@ -5,11 +5,15 @@ const util = require('util');
 const MQEvents = require('./mqevents');
 const pulser = new MQEvents();
 
-
 let debug_info = require('debug')('mqcodeengine-mqlistener:info');
 let debug_warn = require('debug')('mqcodeengine-mqlistener:warn');
 
-let regendpoint = 'http://localhost:8080/api/mqgetbyid?msgid=';
+const CATCHUPPAUSE = 4 * 1000; // 4 SECONDS
+
+let lastidnotified = '';
+
+//let regendpoint = 'http://localhost:8080/api/mqgetbyid?msgid=';
+let regendpoint = 'https://mqcetest02.ahsk8likedw.us-south.codeengine.appdomain.cloud/api/mqgetbyid?msgid=';
 
 // Handler function
 pulser.on('mqevent', (msgData) => {
@@ -34,7 +38,18 @@ function tellRegisteredEndpoints(msgData) {
     if (!msgData || !msgData['HexStrings'] || !msgData['HexStrings'].MsgId) {
       debug_warn('No MsgId found');
       reject('No MsgId provided');
+    } if (lastidnotified === msgData['HexStrings'].MsgId) {
+      debug_warn('Same id as last time');
+      pauseForAbit()
+      .then(() => {
+        reject('Old MsgId');
+      })
+      .catch((err) => {
+        reject(err);
+      })
+
     } else {
+      lastidnotified = msgData['HexStrings'].MsgId
       uri += msgData['HexStrings'].MsgId;
       debug_info('Sending request to ', uri);
 
@@ -60,8 +75,11 @@ function tellRegisteredEndpoints(msgData) {
   });
 }
 
-
-
+function pauseForAbit() {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => { resolve() }, CATCHUPPAUSE);
+  });
+}
 
 // Start it pulsing
 pulser.start();
