@@ -8,7 +8,7 @@ const logger = require('morgan');
 const app = express();
 app.use(logger(process.env.REQUEST_LOG_FORMAT || 'dev'));
 
-const approutes = require('./routes/approutes');
+const approutes = require('../routes/approutes');
 
 // const MQClient = require('./mqclient');
 // let mqclient = new MQClient();

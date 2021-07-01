@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const MQClient = require('../mqclient');
+const MQClient = require('../mqclient/mqclient');
 let mqclient = new MQClient();
 
 let debug_info = require('debug')('mqcodeengine-approutes:info');
