@@ -5,7 +5,7 @@ const decoder = new StringDecoder('utf8');
 
 
 // Load up missing envrionment variables from the env.json file
-const env = require('./env.json');
+const env = require('../env.json');
 
 var MQC = mq.MQC;
 
@@ -349,7 +349,7 @@ class MQClient {
         MQC.MQGMO_FAIL_IF_QUIESCING;
 
       gmo.MatchOptions = MQC.MQMO_MATCH_MSG_ID;
-      mqmd.MsgId = this.hexToBytes(msgid);        
+      mqmd.MsgId = this.hexToBytes(msgid);
 
       mq.GetSync(this[_HOBJKEY], mqmd, gmo, buf, (err, len) => {
         if (err) {
